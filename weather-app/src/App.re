@@ -1,21 +1,24 @@
-[%bs.raw {|require('./App.css')|}];
+type state = {weather: WeatherData.weather};
 
-[@bs.module] external logo: string = "./logo.svg";
+type action =
+  | WeatherLoaded(WeatherData.weather);
 
-let component = ReasonReact.statelessComponent("App");
+let component = ReasonReact.reducerComponent("App");
 
-let make = (~message, _children) => {
+let dummyWeather: WeatherData.weather = {
+  summary: "Warm throughout the day",
+  temp: 30.5,
+};
+
+let make = _children => {
   ...component,
-  render: _self =>
+  initialState: () => {weather: dummyWeather},
+  reducer: (action, _prevState) =>
+    switch (action) {
+    | WeatherLoaded(newWeather) => ReasonReact.Update({weather: newWeather})
+    },
+  render: self =>
     <div className="App">
-      <div className="App-header">
-        <img src=logo className="App-logo" alt="logo" />
-        <h2> {ReasonReact.string(message)} </h2>
-      </div>
-      <p className="App-intro">
-        {ReasonReact.string("To get started, edit")}
-        <code> {ReasonReact.string(" src/App.re ")} </code>
-        {ReasonReact.string("and save to reload.")}
-      </p>
+      <p> {ReasonReact.string(self.state.weather.summary)} </p>
     </div>,
 };
