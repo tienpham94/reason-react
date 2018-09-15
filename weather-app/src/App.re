@@ -1,24 +1,52 @@
-type state = {weather: WeatherData.weather};
+type optionOrError('a) =
+  | Some('a)
+  | None
+  | Error;
+
+type state = {weather: optionOrError(WeatherData.weather)};
 
 type action =
-  | WeatherLoaded(WeatherData.weather);
+  | WeatherLoaded(WeatherData.weather)
+  | WeatherError;
 
 let component = ReasonReact.reducerComponent("App");
 
-let dummyWeather: WeatherData.weather = {
-  summary: "Warm throughout the day",
-  temp: 30.5,
-};
-
 let make = _children => {
   ...component,
-  initialState: () => {weather: dummyWeather},
+  initialState: () => {weather: None},
+  didMount: self => {
+    let handleWeatherLoaded = weather => self.send(WeatherLoaded(weather));
+    let handleWeatherError = () => self.send(WeatherError);
+
+    WeatherData.getWeather()
+    |> Js.Promise.then_(weather => {
+         handleWeatherLoaded(weather);
+         Js.Promise.resolve();
+       })
+    |> Js.Promise.catch(_err => {
+         handleWeatherError();
+         Js.Promise.resolve();
+       })
+    |> ignore;
+
+    /* ReasonReact.NoUpdate; */
+  },
   reducer: (action, _prevState) =>
     switch (action) {
-    | WeatherLoaded(newWeather) => ReasonReact.Update({weather: newWeather})
+    | WeatherLoaded(newWeather) =>
+      ReasonReact.Update({weather: Some(newWeather)})
+    | WeatherError => ReasonReact.Update({weather: Error})
     },
   render: self =>
     <div className="App">
-      <p> {ReasonReact.string(self.state.weather.summary)} </p>
+      <p>
+        {
+          switch (self.state.weather) {
+          | None => ReasonReact.string("Loading weather...")
+          | Error => ReasonReact.string("Error loading weather.")
+          | Some(weather) => ReasonReact.string(weather.summary)
+          }
+        }
+      </p>
     </div>,
 };
